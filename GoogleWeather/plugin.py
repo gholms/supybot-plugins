@@ -87,7 +87,7 @@ class GoogleWeather(callbacks.Plugin):
             msg2 = ' and '.join(filter(None, [wind, humidity]))
             if msg1 and msg2:
                 msg = msg1 + ' with ' + msg2
-            if place:
+            if msg and place:
                 msg = msg + ' in ' + place
             if msg:
                 irc.reply(msg)
