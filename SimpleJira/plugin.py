@@ -162,8 +162,7 @@ class SimpleJira(callbacks.Plugin):
     def assign(self, irc, msg, args, issueid, assignee, assigner):
         '''<id>
 
-        Display information about an issue in JIRA along with a link to
-        it on the web.
+        Assign a JIRA issue to someone.  Use that person's JIRA account name.
         '''
         channel = msg.args[0]
         if not self.registryValue('enabled', channel):
