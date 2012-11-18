@@ -90,8 +90,8 @@ class SimpleJira(callbacks.Plugin):
         else:
             irc.error(errmsg)
 
-    def getissue(self, irc, msg, args, issueid):
-        '''<id>
+    def getissue(self, irc, msg, args, issuekey):
+        '''<issue>
 
         Display information about an issue in JIRA along with a link to
         it on the web.
@@ -100,13 +100,13 @@ class SimpleJira(callbacks.Plugin):
         if not self.registryValue('enabled', channel):
             self.log.debug('SimpleJira is disabled in this channel; skipping')
             return
-        if not check_issueid(issueid):
-            irc.errorInvalid('issue ID', issueid)
+        if not check_issuekey(issuekey):
+            irc.errorInvalid('issue key', issuekey)
             return
 
         try:
             response = self.__send_request('rest/api/2/issue/{0}'.format(
-                    issueid.upper()))
+                    issuekey.upper()))
         except urllib2.HTTPError as err:
             self.__handle_http_error(irc, err, 'Failed to retrieve issue data')
             return
@@ -159,7 +159,7 @@ class SimpleJira(callbacks.Plugin):
 
     getissue = wrap(getissue, ['somethingWithoutSpaces'])
 
-    def assign(self, irc, msg, args, issueid, assignee, actor):
+    def assign(self, irc, msg, args, issuekey, assignee, actor):
         '''<issue> to <assignee>
 
         Assign a JIRA issue to someone.  Use that person's JIRA account name.
@@ -168,12 +168,12 @@ class SimpleJira(callbacks.Plugin):
         if not self.registryValue('enabled', channel):
             self.log.debug('SimpleJira is disabled in this channel; skipping')
             return
-        if not check_issueid(issueid):
-            irc.errorInvalid('issue ID', issueid)
+        if not check_issuekey(issuekey):
+            irc.errorInvalid('issue key', issuekey)
             return
 
         # First set the new assignee
-        path = 'rest/api/2/issue/{0}/assignee'.format(issueid.upper())
+        path = 'rest/api/2/issue/{0}/assignee'.format(issuekey.upper())
         data = {'name': assignee}
         try:
             response = self.__send_request(path, json.dumps(data),
@@ -184,7 +184,7 @@ class SimpleJira(callbacks.Plugin):
         response.read()  # empty the buffer
 
         # Then say who actually did this assignment.
-        path = 'rest/api/2/issue/{0}/comment'.format(issueid.upper())
+        path = 'rest/api/2/issue/{0}/comment'.format(issuekey.upper())
         data = {'body': 'Assigned to {0} by {1}'.format(assignee, actor.name)}
         try:
             response = self.__send_request(path, json.dumps(data))
@@ -202,8 +202,8 @@ class SimpleJira(callbacks.Plugin):
                            ('checkCapability', 'jirawrite')])
 
 
-def check_issueid(issueid):
-    if re.match('[A-Za-z]{2,}-[0-9]+$', issueid):
+def check_issuekey(issuekey):
+    if re.match('[A-Za-z]{2,}-[0-9]+$', issuekey):
         return True
     else:
         return False
