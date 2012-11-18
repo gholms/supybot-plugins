@@ -159,7 +159,7 @@ class SimpleJira(callbacks.Plugin):
 
     getissue = wrap(getissue, ['somethingWithoutSpaces'])
 
-    def assign(self, irc, msg, args, issuekey, assignee, actor):
+    def assign(self, irc, msg, args, issuekey, assignee, actor, comment):
         '''<issue> to <assignee>
 
         Assign a JIRA issue to someone.  Use that person's JIRA account name.
@@ -186,6 +186,8 @@ class SimpleJira(callbacks.Plugin):
         # Then say who actually did this assignment.
         path = 'rest/api/2/issue/{0}/comment'.format(issuekey.upper())
         data = {'body': 'Assigned to {0} by {1}'.format(assignee, actor.name)}
+        if comment is not None:
+            data['body'] += '\n\n' + comment
         try:
             response = self.__send_request(path, json.dumps(data))
         except urllib2.HTTPError as err:
@@ -199,7 +201,8 @@ class SimpleJira(callbacks.Plugin):
                            'to',                      # Yay for English!
                            'somethingWithoutSpaces',  # assignee
                            'user',  # caller must be registered with the bot
-                           ('checkCapability', 'jirawrite')])
+                           ('checkCapability', 'jirawrite'),
+                           optional('text')])
 
 
 def check_issuekey(issuekey):
