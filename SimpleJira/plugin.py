@@ -159,8 +159,8 @@ class SimpleJira(callbacks.Plugin):
 
     getissue = wrap(getissue, ['somethingWithoutSpaces'])
 
-    def assign(self, irc, msg, args, issueid, assignee, assigner):
-        '''<id>
+    def assign(self, irc, msg, args, issueid, assignee, actor):
+        '''<issue> to <assignee>
 
         Assign a JIRA issue to someone.  Use that person's JIRA account name.
         '''
@@ -185,7 +185,7 @@ class SimpleJira(callbacks.Plugin):
 
         # Then say who actually did this assignment.
         path = 'rest/api/2/issue/{0}/comment'.format(issueid.upper())
-        data = {'body': 'Assigned to {0} by {1}'.format(assignee, msg.nick)}
+        data = {'body': 'Assigned to {0} by {1}'.format(assignee, actor.name)}
         try:
             response = self.__send_request(path, json.dumps(data))
         except urllib2.HTTPError as err:
