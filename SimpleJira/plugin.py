@@ -286,6 +286,57 @@ class SimpleJira(callbacks.Plugin):
                              ('checkCapability', 'jirawrite'),
                              'text'])
 
+    def setfield(self, irc, msg, args, actor, issuekey, field, raw_value):
+        '''<issue> <field> <value>
+
+        Set a field of a JIRA issue.  The value given can be either a string
+        or a comma-delimited list of strings surrounded by parentheses.
+        '''
+        # We actually make a ton of assumptions here (most notably that we need
+        # to use 'name' as the key for each field value.
+        channel = msg.args[0]
+        if not self.registryValue('enabled', channel):
+            self.log.debug('SimpleJira is disabled in this channel; skipping')
+            return
+        if not check_issuekey(issuekey):
+            irc.errorInvalid('issue key', issuekey)
+            return
+
+        # Set the field...
+        path = 'rest/api/2/issue/{0}'.format(issuekey.upper())
+        if raw_value.startswith('(') and raw_value.endswith(')'):
+            values = raw_value.strip('()').split(',')
+            values_dict = [{'name': value.strip()} for value in values]
+            data = {'fields': {field: values_dict}}
+        else:
+            data = {'fields': {field: {'name': raw_value}}}
+        try:
+            response = self.__send_request(path, json.dumps(data),
+                                           method='PUT')
+        except urllib2.HTTPError as err:
+            self.__handle_http_error(irc, err, 'Failed to update issue')
+            return
+        response.read()  # empty the buffer
+
+        # ...then log who did it.
+        path = 'rest/api/2/issue/{0}/comment'.format(issuekey.upper())
+        data = {'body': 'Field updated by {0}'.format(actor.name)}
+        try:
+            response = self.__send_request(path, json.dumps(data))
+        except urllib2.HTTPError as err:
+            self.__handle_http_error(irc, err, 'Failed to update issue')
+            return
+        response.read()  # empty the buffer
+
+        irc.replySuccess()
+
+    setfield = wrap(setfield, ['user',  # caller must be registered
+                               'somethingWithoutSpaces',  # issue
+                               'somethingWithoutSpaces',  # field
+                               'text',                    # value
+                               ('checkCapability', 'jirawrite')])
+
+
 
 def check_issuekey(issuekey):
     if re.match('[A-Za-z]{2,}-[0-9]+$', issuekey):
