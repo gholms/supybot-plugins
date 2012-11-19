@@ -85,6 +85,8 @@ class SimpleJira(callbacks.Plugin):
             if err_msg.lower() != 'login required':
                 # Might as well be a little paranoid / less noisy
                 err_bits.append(err_msg)
+        for err_key, err_val in err_dict.get('errors', {}).iteritems():
+            err_bits.append('{0}: {1}'.format(err_key, err_val))
         if len(err_bits) > 0:
             irc.error('  '.join(err_bits))
         else:
@@ -130,7 +132,7 @@ class SimpleJira(callbacks.Plugin):
 
         # 'blocker' priority
         if issue['fields']['priority']['name'] == 'Blocker':
-            issue_flags.append('blocker')
+            issue_flags.append('Blocker')
 
         # 'security' boolean custom field
         security_field_id = self.registryValue('securityFieldId')
@@ -140,7 +142,7 @@ class SimpleJira(callbacks.Plugin):
             if (isinstance(cf_info, dict) and
                 cf_info.get('value', '').lower() == 'yes'):
                 # (This space for rent)
-                issue_flags.append('security')
+                issue_flags.append('Security')
 
         # That's it for issue flags
         if issue_flags:
@@ -160,7 +162,7 @@ class SimpleJira(callbacks.Plugin):
     getissue = wrap(getissue, ['somethingWithoutSpaces'])
 
     def assign(self, irc, msg, args, issuekey, assignee, actor, comment):
-        '''<issue> to <assignee>
+        '''<issue> to <assignee> [comment ...]
 
         Assign a JIRA issue to someone.  Use that person's JIRA account name.
         '''
@@ -172,7 +174,7 @@ class SimpleJira(callbacks.Plugin):
             irc.errorInvalid('issue key', issuekey)
             return
 
-        # First set the new assignee
+        # Assign the issue...
         path = 'rest/api/2/issue/{0}/assignee'.format(issuekey.upper())
         data = {'name': assignee}
         try:
@@ -183,7 +185,7 @@ class SimpleJira(callbacks.Plugin):
             return
         response.read()  # empty the buffer
 
-        # Then say who actually did this assignment.
+        # ...then log who did it.
         path = 'rest/api/2/issue/{0}/comment'.format(issuekey.upper())
         data = {'body': 'Assigned to {0} by {1}'.format(assignee, actor.name)}
         if comment is not None:
