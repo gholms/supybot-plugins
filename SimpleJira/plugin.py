@@ -206,6 +206,57 @@ class SimpleJira(callbacks.Plugin):
                            ('checkCapability', 'jirawrite'),
                            optional('text')])
 
+    def transition(self, irc, msg, args, issuekey, transid, actor, opts,
+                   comment):
+        '''<issue> <trans_id> [--resolution <resolution>] [comment ...]
+
+        Perform a transition on a JIRA issue.
+        '''
+        channel = msg.args[0]
+        if not self.registryValue('enabled', channel):
+            self.log.debug('SimpleJira is disabled in this channel; skipping')
+            return
+        if not check_issuekey(issuekey):
+            irc.errorInvalid('issue key', issuekey)
+            return
+
+        # Perform the transition...
+        path = 'rest/api/2/issue/{0}/transitions'.format(issuekey.upper())
+        data = {'transition': {'id': transid}}
+        resolution = dict(opts).get('resolution')
+        if resolution:
+            # Note that JIRA will complain if the transition doesn't actually
+            # take a resolution.
+            data['fields'] = {'resolution': {'name': resolution}}
+        try:
+            response = self.__send_request(path, json.dumps(data))
+        except urllib2.HTTPError as err:
+            self.__handle_http_error(irc, err, 'Failed to transition issue')
+            return
+        response.read()  # empty the buffer
+
+        # ...then log who did it.
+        path = 'rest/api/2/issue/{0}/comment'.format(issuekey.upper())
+        data = {'body': 'Status updated by {0}'.format(actor.name)}
+        if comment is not None:
+            data['body'] += '\n\n' + comment
+        try:
+            response = self.__send_request(path, json.dumps(data))
+        except urllib2.HTTPError as err:
+            self.__handle_http_error(irc, err, 'Failed to transition issue')
+            return
+        response.read()  # empty the buffer
+
+        irc.replySuccess()
+
+    transition = wrap(transition,
+                      ['somethingWithoutSpaces',  # issue to transition
+                       'positiveInt',  # transition ID
+                       'user',         # caller must be registered with the bot
+                       getopts({'resolution': 'something'}),
+                       ('checkCapability', 'jirawrite'),
+                       optional('text')])
+
 
 def check_issuekey(issuekey):
     if re.match('[A-Za-z]{2,}-[0-9]+$', issuekey):
