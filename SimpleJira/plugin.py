@@ -257,6 +257,35 @@ class SimpleJira(callbacks.Plugin):
                        ('checkCapability', 'jirawrite'),
                        optional('text')])
 
+    def comment(self, irc, msg, args, issuekey, actor, comment):
+        '''<issue> <comment>
+
+        Add a comment to a JIRA issue.
+        '''
+        channel = msg.args[0]
+        if not self.registryValue('enabled', channel):
+            self.log.debug('SimpleJira is disabled in this channel; skipping')
+            return
+        if not check_issuekey(issuekey):
+            irc.errorInvalid('issue key', issuekey)
+            return
+
+        path = 'rest/api/2/issue/{0}/comment'.format(issuekey.upper())
+        data = {'body': 'Comment from {0}:\n\n{1}'.format(actor.name, comment)}
+        try:
+            response = self.__send_request(path, json.dumps(data))
+        except urllib2.HTTPError as err:
+            self.__handle_http_error(irc, err, 'Failed to comment on issue')
+            return
+        response.read()  # empty the buffer
+
+        irc.replySuccess()
+
+    comment = wrap(comment, ['somethingWithoutSpaces',  # issue to transition
+                             'user',  # caller must be registered with the bot
+                             ('checkCapability', 'jirawrite'),
+                             'text'])
+
 
 def check_issuekey(issuekey):
     if re.match('[A-Za-z]{2,}-[0-9]+$', issuekey):
