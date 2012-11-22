@@ -126,7 +126,7 @@ class SimpleJira(callbacks.Plugin):
         status     = issue['fields']['status']['name']
         resolution = issue['fields']['resolution']
         if resolution and status in ('Release Pending', 'Resolved', 'Closed'):
-            issue_flags.append(status + '->' + resolution['name'])
+            issue_flags.append('{0} ({1})'.format(status, resolution['name']))
         else:
             issue_flags.append(status)
 
